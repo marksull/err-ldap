@@ -6,7 +6,7 @@ setup(
     author="Mark Sullivan",
     packages=find_packages(),
     author_email="mark@sullivans.id.au",
-    url="http://github.com/marksull/errldap",
+    url="http://github.com/marksull/err-ldap",
     install_requires=["errbot", "python-ldap"],
     description="Decorator to limit Errbot commands to specific LDAP groups",
 )
