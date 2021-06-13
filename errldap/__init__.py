@@ -136,7 +136,9 @@ def ldap_verify(group, determine_user=user_email):
             groups = group if isinstance(group, list) else [group]
 
             for search_group in groups:
-                if is_member(connection, self, user, search_group):
+                if is_member(
+                    connection=connection, bot=self, user=user, group=search_group
+                ):
                     break
             else:
                 yield fail_message(user=user, msg=msg, groups=groups)
