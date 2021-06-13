@@ -1,15 +1,15 @@
-err-backend-cisco-webex-teams
-======
+err-ldap
+=====
 
-This is an err (http://errbot.io) backend for Cisco Webex Teams (https://www.webex.com/products/teams/index.html) 
-(formally Cisco Spark).
+This is a package that works with err (http://errbot.io) to limit a bot command to a specific LDAP group or groups. In the following example the command ```this_is_a_command``` will only be executed if the user that issued the command belongs to the LDAP group ```group1``` or ```group2```.
 
-This repo is based off my previous Cisco Spark repo (https://github.com/marksull/err-backend-cisco-spark) but with one 
-big difference: this uses websockets and not webhooks to communicate with Webex Teams. This makes a big difference when 
-it comes to deploying your bot behind a firewall or NAT device as the connection is initiated outbound and held open so
-there are no need for webhooks, firewall/nat changes, or tunnels (like NGROK) to provide access to your bot.
+```python
+@ldap_verify(["group1", "group2"])
+@botcmd
+def this_is_a_command(self, msg, args):
+    yield "This command was allowed after LDAP was checked"
+```
 
-The websocket implementation comes from: https://github.com/cgascoig/ciscospark-websocket
 
 ## Status
 
@@ -18,59 +18,106 @@ This backend is currently under development.
 
 ## Installation
 
-```
-git clone https://github.com/marksull/err-backend-cisco-webex-teams.git
-```
-
-To your errbot config.py file add the following:
-
-```
-BACKEND = 'CiscoWebexTeams'
-BOT_EXTRA_BACKEND_DIR = '/path_to/err-backend-cisco-webex-teams'
+```bash
+git clone https://github.com/marksull/err-ldap.git
 ```
 
 ## Bot Configuration
 
-
-To configure the bot you will need a Bot TOKEN. If you don't already have a bot setup on Cisco Webex Teams  details can
-be found here: https://developer.webex.com/bots.html.
+To your errbot config.py file add the following:
 
 ```python
-BOT_IDENTITY = {
-    'TOKEN': '<insert your token in here>',
-}
+LDAP_URL = 'ldaps://server.domain'
+LDAP_USERNAME = 'CN=<username>,OU=<ou>,OU=<ou>,DC=<domain>,DC=com'
+LDAP_PASSWORD = 'xxxx'
+LDAP_SEARCH_BASE = 'OU=<ou>,OU=<ou>,DC=<domain>,DC=com'
 ```
 
-In a Webex Teams GROUP room (more than two people), to direct a command to the bot you need to prefix it with the name of the
-bot as you would any other person in the room (for example, type @ and select the bot name). 
-As Webex Teams will prefix the command with this name it is important that it is stripped from the 
-incoming command for it to be processed correctly. To achieve this add your bot name 
-(exactly as configured in Webex Teams) to the BOT_PREFIX:
+##  Usage
+
+Each bot command that should only be accessible to a specific group should be decorated with ```@ldap_verify()```.
+
+```@ldap_verify()``` accepts either a ```str``` if you only want to validate against a single group, else a ```list``` if the command should be made accessible to multiple groups.
+
+In the example below, the err command ```tryme``` is decorated with the ```ldap_verify``` method. This method was initialised with a list that contains the LDAP group names of  ```group1``` and ```group2```.
+
+When a user issues the command ```tryme``` the user ID will be checked to see if it is a member of ```group1``` OR ```group2```. If the user isn't found in any of the listed groups then a message will be displayed to the user, and the command ```tryme``` will NOT be actioned.
 
 ```python
-BOT_PREFIX = 'my-webex-teams-bot-name '
+from errbot import BotPlugin, botcmd
+from errldap import ldap_verify
+
+class Example(BotPlugin):
+
+    @ldap_verify(["group1", "group2"])
+    @botcmd 
+    def tryme(self, msg, args): 
+        return "It *works* !"
 ```
 
-In a Webex Teams DIRECT room chat with the bot the bot prefix is not sent with the command. Ensure
-to enable BOT_PREFIX_OPTIONAL_ON_CHAT so that the prefix is not required for direct communication:
+
+### Custom User ID Determination
+
+How the user ID is determined can be specific to installed backend or how the userid should be formatted to suit your specific LDAP directory could vary. To cater for these situations, a custom method can override the ```determine_user``` method. For example:
 
 ```python
-BOT_PREFIX_OPTIONAL_ON_CHAT = True
+    import errldap
+
+    def custom_user_id(msg):
+        return f"{msg.frm.userid}@.domain.com"
+
+    errldap.determine_user = custom_user_id
 ```
 
-## Cards
 
-A custom card callback handler has now been implemented to make it easier to work with cards. Refer to the
-example plugin [err-example-card](examples/err-example-cards)
+### Custom LDAP Connection
 
-## Uploads
+If you want to override the LDAP connection sequence, override ```errldap.connect```. For example:
 
-While Webex Teams does not support the creation of a Message with both text and file(s) for upload, this backend will now automatically split the message and the file upload into multiple messages. Refer to the example  [err-example-upload](examples/err-example-upload)
+```python
+    import ldap
+    import errldap
 
-## Credit
+    def custom_connect(bot):
+            con = ldap.initialize(bot.bot_config.LDAP_URL)
+            con.do_something_special()
+            return con
 
-I unrestrainedly plagiarized from most of the already existing err backends and cgascoig's ciscospark-websocket implementation 
-(https://github.com/cgascoig/ciscospark-websocket).
+    errldap.connect = custom_connect
+```
+
+
+### Custom LDAP Search
+
+If you want to override the LDAP group search, override ```errldap.is_member```. For example:
+
+```python
+    
+    import errldap
+
+    def custom_is_member(connection, bot, user, group):
+            if <is member>:
+                return True
+            else:
+                return False
+
+    errldap.is_member = custom_is_member
+```
+
+
+### Custom Fail Message
+
+When the LDAP verify fails, you can provide a custom message by overriding ```errldap.fail_message```. For example:
+
+```python
+    import errldap
+
+    def custom_fail_message(user, msg, groups):
+            return "You shall not pass!"
+
+    errldap.fail_message = custom_fail_message
+```
+
 
 ## Contributing
 
