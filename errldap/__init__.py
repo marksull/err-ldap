@@ -2,6 +2,21 @@ import ldap
 import functools
 
 
+def determine_user(msg):
+    """
+    Determine the used id used for the LDAP searches
+
+    Override this method if you want to custom build the used ID
+
+    Args:
+        msg (errbot.backends.base.Message): The message from the bot that triggered the LDAP lookup
+
+    Returns:
+        str: The user ID that will be used to search LDAP
+    """
+    return user_email(msg)
+
+
 def user_email(msg):
     """
     Use the email from the msg as the user search criteria
@@ -110,7 +125,7 @@ def fail_message(user, msg, groups):
     return f"Sorry, ```{user}``` is not permitted to execute the command ```{msg}``` as you are not a member of ```{','.join(groups)}```"
 
 
-def ldap_verify(group, determine_user=user_email):
+def ldap_verify(group):
     """"
     Decorator to limit commands to a specific LDAP group or groups. The username will be derived from the person whom
     issued the webex teams chat.
@@ -124,7 +139,6 @@ def ldap_verify(group, determine_user=user_email):
 
     Args:
         group (str|list): The LDAP group(s) to which this command should be restricted
-        determine_user: The method that will determine the username that will be used for the LDAP search
     """
 
     def decorator(func):
