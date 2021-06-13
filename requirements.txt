@@ -1,2 +1,0 @@
-errbot
-python-ldap

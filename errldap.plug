@@ -1,9 +1,0 @@
-[Core]
-Name = errldap
-Module = errldap
-
-[Documentation]
-Description = Restrict User Commands to specific LDAP groups
-
-[Python]
-Version = 3.6.0
