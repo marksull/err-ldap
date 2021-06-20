@@ -13,7 +13,7 @@ def this_is_a_command(self, msg, args):
 
 ## Status
 
-This backend is currently under development.
+This package is currently under development.
 
 
 ## Installation
@@ -52,7 +52,7 @@ class Example(BotPlugin):
     @ldap_verify(["group1", "group2"])
     @botcmd 
     def tryme(self, msg, args): 
-        return "It *works* !"
+        yield "It *works* !"
 ```
 
 
